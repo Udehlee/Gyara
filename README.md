@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gyara
+**Gyara** is an AI operations agent for supply chain that watches for disruption notices, figures out how they matter to your business and either recommends a fix or allows a human to approve a fix.
 
-## Getting Started
+Built for two specific situations:
+- Shipment delays: this could be a carrier delay, custom hold or a warehouse backup.
+- External events: a flood, road or a port closure disrupts a route. 
 
-First, run the development server:
+## How it works
+You type a notice and Gyara:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Looks up real data like the shipment, route, supplier from its own record(database).
+- Reasons about the impact of such disruption
+- Proposes a specific fix or explains why no action is needed
+- Waits for your approval before doing anything that may cost money or change deliver
+- Executes the approved action and logs what happened
+
+## Tech stack
+- Next.js
+- LLM(Groq(OpenAI-compatible API))
+- Supabase
+- Server-Sent Events via `ReadbleStream`
+- CI
+- pnpm
+- Vitest
+
+## Getting started
+
+### prerequisites
+- Node.js 20+
+- pnpm
+- [Groq](https://console.groq.com) account and API key
+- [Supabase](https://supabase.com) project
+
+### Clone the repository
+```sh
+git clone <your-repo-url>
+cd gyara
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Configure environment variables
+- Create a `.env` file at the project root:
+```sh
+GROQ_API_KEY=your_groq_api_key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+```
+### Set up your database
+- Run the SQL in [`supabase/schema.sql`](supabase/schema.sql) in your Supabase project SQL Editor to create the tables, enable Row Level Security, and grant the necessary permissions.
+- Then run [`supabase/seed.sql`](supabase/seed.sql) to populate it with sample shipment, route, and supplier data.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Run it
+```bash
+pnpm dev
+```
+- Open [localhost:3000](http://localhost:3000) and Type a notice.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Testing
+```bash
+pnpm test
+```
