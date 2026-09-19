@@ -33,7 +33,7 @@ You type a notice and Gyara:
 
 ### Clone the repository
 ```sh
-git clone <your-repo-url>
+git clone https://github.com/Udehlee/Gyara.git
 cd gyara
 pnpm install
 ```
