@@ -1,61 +1,93 @@
 # Gyara
-**Gyara** is an AI operations agent for supply chain that watches for disruption notices, figures out how they matter to your business and either recommends a fix or allows a human to approve a fix.
+Gyara is an AI-powered supply chain operations agent that monitors disruption notices, evaluates their impact on your business and recommends corrective actions for human approval.
 
-Built for two specific situations:
-- Shipment delays: this could be a carrier delay, custom hold or a warehouse backup.
-- External events: a flood, road or a port closure disrupts a route. 
+It focuses on two types of disruptions:
+- **Shipment Delays:** Carrier delays, customs holds, and warehouse backlogs.
+- **External Events:** Floods, road closures, and port disruptions that affect shipment routes.
 
-## How it works
-You type a notice and Gyara:
+## Features
+- **Disruption Analysis:** Evaluates incoming notices to determine how they affect business operations.
+- **Business Data Retrieval:** Looks up relevant shipment, route, and supplier records from the database.
+- **AI-Powered Recommendations:** Uses Groq to assess disruptions and propose specific corrective actions.
+- **Human-in-the-Loop Approval:** Requires approval before executing actions that could incur costs or change delivery arrangements.
+- **Action Execution and Audit Trail:** Executes approved actions and records what happened.
+- **Streaming Responses:** Uses Server-Sent Events (SSE) to stream agent updates to the interface.
 
-- Looks up real data like the shipment, route, supplier from its own record(database).
-- Reasons about the impact of such disruption
-- Proposes a specific fix or explains why no action is needed
-- Waits for your approval before doing anything that may cost money or change deliver
-- Executes the approved action and logs what happened
+## System Architecture
+Gyara processes disruption notices through a sequence of data retrieval, AI reasoning, human approval, and action execution.
 
-## Tech stack
-- Next.js
-- LLM(Groq(OpenAI-compatible API))
-- Supabase
-- Server-Sent Events via `ReadbleStream`
-- CI
-- pnpm
-- Vitest
+```mermaid
+sequenceDiagram
+    actor User
+    participant App as Gyara
+    participant DB as Supabase
+    participant AI as Groq
 
-## Getting started
+    User->>App: Submit disruption notice
+    App->>DB: Retrieve shipment, route and supplier data
+    DB-->>App: Return relevant records
+    App->>AI: Send notice and business context
+    AI-->>App: Return impact analysis and recommendation
+    App-->>User: Stream analysis and proposed action
 
-### prerequisites
-- Node.js 20+
-- pnpm
-- [Groq](https://console.groq.com) account and API key
-- [Supabase](https://supabase.com) project
+    User->>App: Approve or reject recommendation
 
-### Clone the repository
-```sh
+    alt Action approved
+        App->>App: Execute approved action
+        App->>DB: Record executed action
+        DB-->>App: Confirm saved record
+        App-->>User: Return execution result
+    else Action rejected
+        App->>App: Skip execution
+        App->>DB: Record decision
+        App-->>User: Confirm no action was taken
+    end
+```
+
+## Requirements
+
+- Node.js 
+- Supabase project
+- Groq account and API key
+
+## Getting Started
+### Clone the Repository
+
+```bash
 git clone https://github.com/Udehlee/Gyara.git
 cd gyara
 pnpm install
 ```
 
-### Configure environment variables
-- Create a `.env` file at the project root:
-```sh
+### Configure Environment Variables
+Create a `.env` file in the project root:
+
+```env
 GROQ_API_KEY=your_groq_api_key
+
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 ```
-### Set up your database
-- Run the SQL in [`supabase/schema.sql`](supabase/schema.sql) in your Supabase project SQL Editor to create the tables, enable Row Level Security, and grant the necessary permissions.
-- Then run [`supabase/seed.sql`](supabase/seed.sql) to populate it with sample shipment, route, and supplier data.
 
-### Run it
+Get your API key and project credentials from:
+
+- [Groq Console](https://console.groq.com/)
+- [Supabase Dashboard](https://supabase.com/dashboard)
+
+### Set Up the Database
+-  Open your Supabase project and navigate to the SQL Editor.
+-  Run the SQL in [`supabase/schema.sql`](supabase/schema.sql) to create the required tables, enable Row Level Security (RLS), and configure permissions.
+-  Run [`supabase/seed.sql`](supabase/seed.sql) to populate the database with sample shipment, route, and supplier records.
+
+### Run the Application
 ```bash
 pnpm dev
 ```
-- Open [localhost:3000](http://localhost:3000) and Type a notice.
 
-### Testing
+Open [http://localhost:3000](http://localhost:3000) in your browser and submit a disruption notice to get started.
+
+Run the test:
 ```bash
 pnpm test
 ```
+The project also uses Vitest for testing and CI for automated checks.
