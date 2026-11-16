@@ -1,69 +1,177 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import Header from  "@/components/Header";
+import ThreadSidebar from "@/components/SideBar";
+import ChatWindow from "@/components/chat/ChatWindow";
+import type { Thread, UIMessage } from "@/lib/types";
+
+function newThread(): Thread {
+  return {
+    id: crypto.randomUUID(),
+    title: "New chat",
+    messages: [],
+    createdAt: new Date().toISOString(),
+  };
+}
 
 export default function Home() {
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  const activeThread = threads.find((t) => t.id === activeThreadId) ?? null;
+
+  function handleNewThread() {
+    const t = newThread();
+    setThreads((prev) => [t, ...prev]);
+    setActiveThreadId(t.id);
+  }
+
+  function handleDeleteThread(id: string) {
+    setThreads((prev) => prev.filter((t) => t.id !== id));
+    if (activeThreadId === id) setActiveThreadId(null);
+  }
+
+  async function handleSend(text: string) {
+    let threadId = activeThreadId;
+
+    if (!threadId) {
+      const t = newThread();
+      threadId = t.id;
+      setThreads((prev) => [t, ...prev]);
+      setActiveThreadId(t.id);
+    }
+
+    setSidebarOpen(true);
+
+    const userMsg: UIMessage = { id: crypto.randomUUID(), role: "user", text };
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.id === threadId
+          ? {
+              ...t,
+              messages: [...t.messages, userMsg],
+              title: t.messages.length === 0 ? text.slice(0, 40) : t.title,
+            }
+          : t
+      )
+    );
+
+    setLoading(true);
+    setStatusMessage(null);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+
+      if (!res.body) throw new Error("No response body");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          if (!part.startsWith("data: ")) continue;
+          const event = JSON.parse(part.slice(6));
+
+          if (event.type === "status") {
+            setStatusMessage(event.message);
+          } else if (event.type === "final") {
+            setThreads((prev) =>
+              prev.map((t) =>
+                t.id === threadId
+                  ? {
+                      ...t,
+                      messages: [
+                        ...t.messages,
+                        {
+                          id: crypto.randomUUID(),
+                          role: "agent",
+                          text: "",
+                          finalAnswer: event.finalAnswer,
+                        },
+                      ],
+                    }
+                  : t
+              )
+            );
+          } else if (event.type === "error") {
+            setThreads((prev) =>
+              prev.map((t) =>
+                t.id === threadId
+                  ? {
+                      ...t,
+                      messages: [
+                        ...t.messages,
+                        { id: crypto.randomUUID(), role: "agent", text: event.message },
+                      ],
+                    }
+                  : t
+              )
+            );
+          }
+        }
+      }
+    } catch {
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === threadId
+            ? {
+                ...t,
+                messages: [
+                  ...t.messages,
+                  {
+                    id: crypto.randomUUID(),
+                    role: "agent",
+                    text: "Something went wrong reaching the agent.",
+                  },
+                ],
+              }
+            : t
+        )
+      );
+    } finally {
+      setLoading(false);
+      setStatusMessage(null);
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="flex h-screen">
+      <ThreadSidebar
+        open={sidebarOpen}
+        onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        threads={threads}
+        activeThreadId={activeThreadId}
+        onNewThread={handleNewThread}
+        onSelectThread={setActiveThreadId}
+        onDeleteThread={handleDeleteThread}
+      />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Header sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((v) => !v)} threadTitle={activeThread?.title}/>
+        <div className="flex-1 overflow-hidden">
+          <ChatWindow
+            messages={activeThread?.messages ?? []}
+            loading={loading}
+            statusMessage={statusMessage}
+            onSend={handleSend}
+          />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
