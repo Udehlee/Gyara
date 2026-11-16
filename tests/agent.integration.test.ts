@@ -1,7 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { resolveNoticeGraph } from "../lib/agent/resolve-notice";
 
+let testsRun = 0;
+
 describe("Gyara agent (LangGraph)", () => {
+  beforeEach(async () => {
+    if (testsRun++ > 0) {
+      await new Promise((r) => setTimeout(r, 60_000));
+    }
+  });
+
   it("recommends a reroute for a disrupted route", async () => {
     const result = await resolveNoticeGraph(
       "Flooding reported near Trade Fair Complex, road on route R-03 impassable."
