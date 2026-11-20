@@ -45,7 +45,10 @@ export default function Home() {
       setActiveThreadId(t.id);
     }
 
-    setSidebarOpen(true);
+    // Only auto-open sidebar on desktop screens (>= 768px); keep closed on mobile
+    if (typeof window !== "undefined" && window.innerWidth >= 768) {
+      setSidebarOpen(true);
+    }
 
     const userMsg: UIMessage = { id: crypto.randomUUID(), role: "user", text };
     setThreads((prev) =>

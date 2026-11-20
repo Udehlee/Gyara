@@ -16,6 +16,7 @@ export default function Header({
       {!sidebarOpen && (
         <button
           onClick={onToggleSidebar}
+          aria-label="Open sidebar"
           className="text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md p-1.5 transition-colors flex-shrink-0"
         >
           <PanelLeftOpen className="h-4.5 w-4.5" />
